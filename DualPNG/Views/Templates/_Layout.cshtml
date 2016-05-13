@@ -1,0 +1,30 @@
+﻿
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>@ViewBag.Title</title>
+    <link href="~/Resources/bootstrap-3.3.6-dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="~/Resources/bootstrap-3.3.6-dist/css/bootstrap-theme.min.css" rel="stylesheet" />
+    <link href="~/Resources/styles.css" rel="stylesheet" />
+</head>
+<body>
+    <div class="container">
+        <header><h1>@ViewBag.Title</h1></header>
+        <hr />
+        @RenderBody()
+        <hr />
+        <footer>
+            <p class="text-center">Hit my twitter if you wanna talk.</p>
+        </footer>
+    </div>
+
+    <script src="~/Resources/bootstrap-3.3.6-dist/js/npm.js"></script>
+    <script src="~/Resources/bootstrap-3.3.6-dist/js/bootstrap.min.js"></script>
+</body>
+</html>

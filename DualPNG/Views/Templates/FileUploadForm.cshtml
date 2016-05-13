@@ -1,0 +1,22 @@
+﻿@using (Html.BeginForm("Index", "Home", FormMethod.Post, new { enctype = "multipart/form-data" }))
+{
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="fileLeft">Image One:</label>
+                <input type="file" name="fileLeft" id="fileLeft" accept=".png"class="form-control" />
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="fileRight">Image Two:</label>
+                <input type="file" name="fileRight" id="fileRight" accept=".png" class="form-control" />
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <input type="submit" value="OK" class="btn btn-primary" />
+        </div>
+    </div>
+}
