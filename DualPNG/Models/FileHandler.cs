@@ -36,7 +36,7 @@ namespace DualPNG.Models
                     new ImageManipulator(Path.Combine(FileDir, Path.GetFileName(fileOne.FileName)),
                                             Path.Combine(FileDir, Path.GetFileName(fileTwo.FileName)),
                                             null);
-            manipulator.GenerateImage(Path.Combine(FileDir, "RESULT.png"));
+            manipulator.GenerateImage(FileDir);
         }
 
         /// <summary>

@@ -1,9 +1,11 @@
 ﻿using Hjg.Pngcs;
+using Hjg.Pngcs.Chunks;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 using System.Web;
 
@@ -13,10 +15,12 @@ namespace DualPNG.Models
     { 
 
         private Dictionary<string, double> Opts { get; set; }
-        private string PathOne { get; set; }
-        private string PathTwo { get; set; }
-        private PngReader ReaderOne { get; set; }
-        private PngReader ReaderTwo { get; set; }
+        private Bitmap iOne { get; set; }
+        private Bitmap iTwo { get; set; }
+        private Bitmap result { get; set; }
+
+        //private PngReader ReaderOne { get; set; }
+        //private PngReader ReaderTwo { get; set; }
 
         /// <summary>
         /// Generates an image that displays differently when rendered in different clients,
@@ -27,8 +31,8 @@ namespace DualPNG.Models
         /// <param name="directory"></param>
         public ImageManipulator(string imgOne, string imgTwo, Dictionary<string, double> options)
         {
-            PathOne = imgOne;
-            PathTwo = imgTwo;
+            iOne = new Bitmap(Bitmap.FromFile(imgOne));
+            iTwo = new Bitmap(Bitmap.FromFile(imgTwo));
             if (!IdenticalSizes())
             {
                 throw new Exception("Images are not the same size.");
@@ -48,34 +52,74 @@ namespace DualPNG.Models
             }
         }
 
+        /// <summary>
+        /// Generates the image which only needs its gamma adjusted.
+        /// </summary>
+        /// <param name="targetPath"></param>
         public void GenerateImage(string targetPath)
         {
-            GenerateBlackBlank(targetPath);
-            PngReader outRead = FileHelper.CreatePngReader(targetPath);
-            PngWriter outWrite = FileHelper.CreatePngWriter(targetPath, outRead.ImgInfo, true);
-            ImageInfo outInfo = outRead.ImgInfo;
-            ImageLine outLine = new ImageLine(outInfo);
+            Bitmap iOut = GenerateBlackBlank();
+            for (int x = 0; x < iOut.Width; x++)
+            {
+                for (int y = 0; y < iOut.Height; y++)
+                {
+                  if((x % 2 == 0) && (y % 2 == 0))
+                    {
+                        Color inCol = iOne.GetPixel((x / 2), (y / 2));
+                        int r = Transform(inCol.R);
+                        int g = Transform(inCol.G);
+                        int b = Transform(inCol.B);
+                        Color outCol = Color.FromArgb(r, g, b);
+                        iOut.SetPixel(x, y, outCol);
+                    }
+                    else
+                    {
+                        Color inCol = iTwo.GetPixel((x / 2), (y / 2));
+                        int r = Convert.ToInt32(Math.Round(inCol.R * Opts["fade2"]));
+                        int g = Convert.ToInt32(Math.Round(inCol.G * Opts["fade2"]));
+                        int b = Convert.ToInt32(Math.Round(inCol.B * Opts["fade2"]));
+                        Color outCol = Color.FromArgb(r, g, b);
+                        iOut.SetPixel(x, y, outCol);
+                    }
+                }
+            }
+            result = iOut;
+            iOut.Save( Path.Combine(targetPath, "result.png"), ImageFormat.Png);
+            SetGamma(targetPath);
+        }
 
-            Debug.WriteLine(outLine.ElementsPerRow + " " + outLine.Rown);
-            //for (int x = 0; x <= outLine.ElementsPerRow; x++){
-            //  for (int y = 0; y <= outLine.Rown; y++)
-            //{
-
-            //}
-            //}
+        private void SetGamma(string targetPath)
+        {
+            //using the pngcs library
+            int gamma = Convert.ToInt32(Opts["gamma"] * 100000); // adjusted gamma value as unsigned int
+            using (Stream fileStream = FileHelper.OpenFileForReading(Path.Combine(targetPath, "result.png")),
+                outStream = FileHelper.OpenFileForWriting(Path.Combine(targetPath, "result2.png"), true))
+            {
+                PngReader reader = new PngReader(fileStream);
+                ImageInfo inf = reader.ImgInfo;
+                (reader.GetChunksList().GetById(PngChunkGAMA.ID)[0] as PngChunkGAMA).SetGamma(gamma);
+                Debug.WriteLine(reader.GetChunksList().ToStringFull());
+                Debug.WriteLine((reader.GetChunksList().GetById(PngChunkGAMA.ID)[0] as PngChunkGAMA).GetGamma());
+                PngWriter writer = new PngWriter(outStream, inf);
+                writer.CopyChunksFirst(reader, ChunkCopyBehaviour.COPY_ALL);
+                ImageLine line;
+                for (int row = 0; row < inf.Rows; row++)
+                {
+                    line = reader.ReadRow(row);
+                    writer.WriteRow(line.GetScanlineInt());
+                }
+                writer.End();
+                reader.End();
+            }
         }
 
         /// <summary>
-        /// Generates a plain black 
+        /// Generates a blank bitmap which is easy to write to.
         /// </summary>
         /// <returns></returns>
-        private void GenerateBlackBlank(string targetPath)
+        private Bitmap GenerateBlackBlank()
         {
-            Image a = Image.FromFile(PathOne);
-            Bitmap b = new Bitmap(1, 1);
-            b.SetPixel(0, 0, Color.Black);
-            Bitmap blank = new Bitmap(b, (a.Width * 2), (a.Height * 2));
-            b.Save(targetPath, ImageFormat.Png); //saves the image to later retrieve it.
+            return new Bitmap((iOne.Width * 2), (iOne.Height * 2));
         }
 
         /// <summary>
@@ -84,16 +128,7 @@ namespace DualPNG.Models
         /// <returns></returns>
         private Boolean IdenticalSizes()
         {
-            return (Image.FromFile(PathOne).PhysicalDimension == Image.FromFile(PathTwo).PhysicalDimension) ? true : false;
-        }
-
-        /// <summary>
-        /// Initializes the .png readers.
-        /// </summary>
-        private void InitializeReaders()
-        {
-            ReaderOne = FileHelper.CreatePngReader(PathOne);
-            ReaderOne = FileHelper.CreatePngReader(PathTwo);
+            return (iOne.PhysicalDimension == iOne.PhysicalDimension) ? true : false;
         }
 
         /// <summary>
@@ -106,7 +141,5 @@ namespace DualPNG.Models
             double scaled = num * Opts["fade1"] + Opts["shift"];
             return Convert.ToInt32(Math.Floor((scaled / 255.0) * (Opts["gamma"]) * 255.0));
         }
-
-        //TODO: FIND A DECENT FUCKING PNG EDITOR HOLY FUCKING SHIT I FUCNVJSNDFBJSDNFGBKSDFNG B
     }
 }

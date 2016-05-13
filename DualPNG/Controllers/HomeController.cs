@@ -29,7 +29,7 @@ namespace DualPNG.Controllers
                     FileHandler fileHandler = new FileHandler(fileLeft, fileRight, Server.MapPath("~/Images/uploaded/"));
                     fileHandler.SaveHandledFiles();
                     fileHandler.GenerateImage();
-                    return Redirect("~/Images/uploaded/" + fileHandler.RandomFolderName);
+                    return Redirect("~/Images/uploaded/" + fileHandler.RandomFolderName + "/result.png");
                     //fileHandler.DeleteHandledFiles();
                 }
 
