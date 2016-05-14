@@ -17,7 +17,8 @@ namespace DualPNG.Models
         private Dictionary<string, double> Opts { get; set; }
         private Bitmap iOne { get; set; }
         private Bitmap iTwo { get; set; }
-        private Bitmap result { get; set; }
+        private Bitmap Result { get; set; }
+        private string ResultPath { get; set; }
 
         //private PngReader ReaderOne { get; set; }
         //private PngReader ReaderTwo { get; set; }
@@ -29,10 +30,11 @@ namespace DualPNG.Models
         /// <param name="imgOne"></param>
         /// <param name="imgTwo"></param>
         /// <param name="directory"></param>
-        public ImageManipulator(string imgOne, string imgTwo, Dictionary<string, double> options)
+        public ImageManipulator(string imgOne, string imgTwo, Dictionary<string, double> options, string path)
         {
             iOne = new Bitmap(Bitmap.FromFile(imgOne));
             iTwo = new Bitmap(Bitmap.FromFile(imgTwo));
+            ResultPath = path;
             if (!IdenticalSizes())
             {
                 throw new Exception("Images are not the same size.");
@@ -49,67 +51,6 @@ namespace DualPNG.Models
                 Opts["fade1"] = 220 / 255.0;
                 Opts["fade2"] = 210 / 255.0;
                 Opts["shift"] = 10;
-            }
-        }
-
-        /// <summary>
-        /// Generates the image which only needs its gamma adjusted.
-        /// </summary>
-        /// <param name="targetPath"></param>
-        public void GenerateImage(string targetPath)
-        {
-            Bitmap iOut = GenerateBlackBlank();
-            for (int x = 0; x < iOut.Width; x++)
-            {
-                for (int y = 0; y < iOut.Height; y++)
-                {
-                  if((x % 2 == 0) && (y % 2 == 0))
-                    {
-                        Color inCol = iOne.GetPixel((x / 2), (y / 2));
-                        int r = Transform(inCol.R);
-                        int g = Transform(inCol.G);
-                        int b = Transform(inCol.B);
-                        Color outCol = Color.FromArgb(r, g, b);
-                        iOut.SetPixel(x, y, outCol);
-                    }
-                    else
-                    {
-                        Color inCol = iTwo.GetPixel((x / 2), (y / 2));
-                        int r = Convert.ToInt32(Math.Round(inCol.R * Opts["fade2"]));
-                        int g = Convert.ToInt32(Math.Round(inCol.G * Opts["fade2"]));
-                        int b = Convert.ToInt32(Math.Round(inCol.B * Opts["fade2"]));
-                        Color outCol = Color.FromArgb(r, g, b);
-                        iOut.SetPixel(x, y, outCol);
-                    }
-                }
-            }
-            result = iOut;
-            iOut.Save( Path.Combine(targetPath, "result.png"), ImageFormat.Png);
-            SetGamma(targetPath);
-        }
-
-        private void SetGamma(string targetPath)
-        {
-            //using the pngcs library
-            int gamma = Convert.ToInt32(Opts["gamma"] * 100000); // adjusted gamma value as unsigned int
-            using (Stream fileStream = FileHelper.OpenFileForReading(Path.Combine(targetPath, "result.png")),
-                outStream = FileHelper.OpenFileForWriting(Path.Combine(targetPath, "result2.png"), true))
-            {
-                PngReader reader = new PngReader(fileStream);
-                ImageInfo inf = reader.ImgInfo;
-                (reader.GetChunksList().GetById(PngChunkGAMA.ID)[0] as PngChunkGAMA).SetGamma(gamma);
-                Debug.WriteLine(reader.GetChunksList().ToStringFull());
-                Debug.WriteLine((reader.GetChunksList().GetById(PngChunkGAMA.ID)[0] as PngChunkGAMA).GetGamma());
-                PngWriter writer = new PngWriter(outStream, inf);
-                writer.CopyChunksFirst(reader, ChunkCopyBehaviour.COPY_ALL);
-                ImageLine line;
-                for (int row = 0; row < inf.Rows; row++)
-                {
-                    line = reader.ReadRow(row);
-                    writer.WriteRow(line.GetScanlineInt());
-                }
-                writer.End();
-                reader.End();
             }
         }
 
@@ -141,5 +82,89 @@ namespace DualPNG.Models
             double scaled = num * Opts["fade1"] + Opts["shift"];
             return Convert.ToInt32(Math.Floor((scaled / 255.0) * (Opts["gamma"]) * 255.0));
         }
+
+        public void SaveImg(string name)
+        {
+            Result.Save(ResultPath + ".png", ImageFormat.Png);
+        }
+
+        //###########################################################################################
+        //# Currently rewriting original DoubleVision gem to C#
+        //###########################################################################################
+        /// <summary>
+        /// Generates the image which only needs its gamma adjusted.
+        /// </summary>
+        /// <param name="targetPath"></param>
+        //public void GenerateImage()
+        //{
+        //    Bitmap iOut = GenerateBlackBlank();
+        //    for (int x = 0; x < iOut.Width; x++)
+        //    {
+        //        for (int y = 0; y < iOut.Height; y++)
+        //        {
+        //            if ((x % 2 == 0) && (y % 2 == 0))
+        //            {
+        //                Color inCol = iOne.GetPixel((x / 2), (y / 2));
+        //                int r = Transform(inCol.R);
+        //                int g = Transform(inCol.G);
+        //                int b = Transform(inCol.B);
+        //                Color outCol = Color.FromArgb(r, g, b);
+        //                iOut.SetPixel(x, y, outCol);
+        //            }
+        //            else
+        //            {
+        //                Color inCol = iTwo.GetPixel((x / 2), (y / 2));
+        //                int r = Convert.ToInt32(Math.Round(inCol.R * Opts["fade2"]));
+        //                int g = Convert.ToInt32(Math.Round(inCol.G * Opts["fade2"]));
+        //                int b = Convert.ToInt32(Math.Round(inCol.B * Opts["fade2"]));
+        //                Color outCol = Color.FromArgb(r, g, b);
+        //                iOut.SetPixel(x, y, outCol);
+        //            }
+        //        }
+        //    }
+        //    Result = iOut;
+        //    SaveImg("result");
+        //    SetGamma();
+        //}
+
+        //private void SetGamma()
+        //{
+        //    using the pngcs library
+        //    int gamma = Convert.ToInt32(Opts["gamma"] * 100000); // adjusted gamma value as unsigned int
+        //    using (Stream fileStream = FileHelper.OpenFileForReading(Path.Combine(ResultPath, "result.png")),
+        //        outStream = FileHelper.OpenFileForWriting(Path.Combine(ResultPath, "result2.png"), true))
+        //    {
+        //        PngReader reader = new PngReader(fileStream);
+        //        ImageInfo inf = reader.ImgInfo;
+        //        (reader.GetChunksList().GetById(PngChunkGAMA.ID)[0] as PngChunkGAMA).SetGamma(gamma);
+        //        Debug.WriteLine(reader.GetChunksList().ToStringFull());
+        //        Debug.WriteLine((reader.GetChunksList().GetById(PngChunkGAMA.ID)[0] as PngChunkGAMA).GetGamma());
+        //        PngWriter writer = new PngWriter(outStream, inf);
+        //        writer.CopyChunksFirst(reader, ChunkCopyBehaviour.COPY_ALL);
+        //        ImageLine line;
+        //        for (int row = 0; row < inf.Rows; row++)
+        //        {
+        //            line = reader.ReadRow(row);
+        //            writer.WriteRow(line.GetScanlineInt());
+        //        }
+        //        writer.End();
+        //        reader.End();
+        //    }
+        //}
+
+        //private void SetGamma1()
+        //{
+        //    Bitmap temp = (Bitmap)Result.Clone();
+        //    float gamma = 0.23f;
+        //    ImageAttributes att = new ImageAttributes();
+        //    att.SetGamma(gamma);
+        //    Point[] points = { new Point(0, 0), new Point(temp.Width - 1, 0), new Point(0, temp.Height) };
+        //    Rectangle rect = new Rectangle(0, 0, temp.Width, temp.Height);
+        //    using (Graphics g = Graphics.FromImage(temp))
+        //    {
+        //        g.DrawImage(temp, points, rect, GraphicsUnit.Pixel, att);
+        //    }
+        //    Result = temp;
+        //}
     }
 }

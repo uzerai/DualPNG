@@ -32,11 +32,9 @@ namespace DualPNG.Models
 
         public void GenerateImage()
         {
-            ImageManipulator manipulator =
-                    new ImageManipulator(Path.Combine(FileDir, Path.GetFileName(fileOne.FileName)),
-                                            Path.Combine(FileDir, Path.GetFileName(fileTwo.FileName)),
-                                            null);
-            manipulator.GenerateImage(FileDir);
+            DoubleVisionWrapper.GenerateImage(FileDir, fileOne.FileName, fileTwo.FileName, "result.png");
+            //ImageManipulator manipulator =new ImageManipulator(Path.Combine(FileDir, Path.GetFileName(fileOne.FileName)),Path.Combine(FileDir, Path.GetFileName(fileTwo.FileName)),null, FileDir);
+            //manipulator.GenerateImage();
         }
 
         /// <summary>
